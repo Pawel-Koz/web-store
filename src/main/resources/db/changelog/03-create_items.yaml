@@ -1,0 +1,29 @@
+databaseChangeLog:
+  - changeSet:
+      id: 0
+      author: admin
+      changes:
+        - createTable:
+            tableName: items
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: item_pk
+              - column:
+                  name: title
+                  type: varchar(60)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: available
+                  type: int
+                  constraints:
+                    nullable: false
+              - column:
+                  name: price
+                  type: double precision(10,2)
