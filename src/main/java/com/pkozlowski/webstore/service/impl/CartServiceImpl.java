@@ -1,16 +1,16 @@
 package com.pkozlowski.webstore.service.impl;
 
+import com.pkozlowski.webstore.exception.ItemException;
 import com.pkozlowski.webstore.model.Cart;
 import com.pkozlowski.webstore.model.CartItem;
 import com.pkozlowski.webstore.model.Item;
-import com.pkozlowski.webstore.exception.ItemException;
+import com.pkozlowski.webstore.model.ItemOperation;
 import com.pkozlowski.webstore.repository.ItemRepository;
 import com.pkozlowski.webstore.service.CartService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.*;
 
 @Service
 public class CartServiceImpl implements CartService {
@@ -39,16 +39,15 @@ public class CartServiceImpl implements CartService {
             cart = new Cart();
             session.setAttribute("cart", cart);
         }
-        Optional<CartItem> existingCartItem = cart.getCartItems().stream().filter(itemInCart -> itemInCart.getTitle().equals(item.getTitle()))
-                .findFirst();
-        if (existingCartItem.isPresent()) {
-            int setQuantity = existingCartItem.get().getQuantity() + quantity;
-            existingCartItem.get().setQuantity(setQuantity);
-            existingCartItem.get().setPrice(existingCartItem.get().getPricePerUnit().multiply(new BigDecimal(setQuantity)));
-        } else {
-            CartItem cartItem = buildCartItem(quantity, item);
-            cart.addCartItem(cartItem);
-        }
+        final Cart finalCart = cart;
+        cart.getCartItems().stream().filter(itemInCart -> itemInCart.getTitle().equals(item.getTitle()))
+                .findFirst()
+                .ifPresentOrElse(
+                        cartItem -> updateCartItem(quantity, cartItem, ItemOperation.ADD),
+                        () -> {
+                            CartItem cartItem = buildCartItem(quantity, item);
+                            finalCart.addCartItem(cartItem);
+                        });
         item.setAvailable(item.getAvailable() - quantity);
         itemRepository.save(item);
     }
@@ -87,14 +86,10 @@ public class CartServiceImpl implements CartService {
         if (quantity == 0) {
             removeItemFromCartUpdateDb(id, cart, cartItem);
         } else if (quantity < actualItemsQuantity) {
-            quantityToSet = actualItemsQuantity - quantity;
-            cartItem.setQuantity(quantity);
-            cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
+            quantityToSet = updateCartItem(quantity, cartItem, ItemOperation.DECREASE);
             item.setAvailable(item.getAvailable() + quantityToSet);
         } else if (quantity > actualItemsQuantity) {
-            quantityToSet = quantity - actualItemsQuantity;
-            cartItem.setQuantity(quantity);
-            cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
+            quantityToSet = updateCartItem(quantity, cartItem, ItemOperation.INCREASE);
             item.setAvailable(item.getAvailable() - quantityToSet);
         }
         itemRepository.save(item);
@@ -128,5 +123,28 @@ public class CartServiceImpl implements CartService {
     private static CartItem getCartItemFromCart(long id, Cart cart) {
         return cart.getCartItems().stream().filter(cartItem -> cartItem.getId() == id).findFirst()
                 .orElseThrow(() -> new ItemException(String.format("Item with id: %d doesn't exist in cart", id)));
+    }
+
+    private static int updateCartItem(int quantity, CartItem cartItem, ItemOperation operation) {
+        int setQuantity;
+        switch (operation) {
+            case ADD -> {
+                setQuantity = cartItem.getQuantity() + quantity;
+                cartItem.setQuantity(setQuantity);
+                cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(setQuantity)));
+            }
+            case INCREASE -> {
+                setQuantity = quantity - cartItem.getQuantity();
+                cartItem.setQuantity(quantity);
+                cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
+            }
+            case DECREASE -> {
+                setQuantity = cartItem.getQuantity() - quantity;
+                cartItem.setQuantity(quantity);
+                cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
+            }
+            default -> throw new RuntimeException(String.format("Unknown operation %s", operation));
+        }
+        return setQuantity;
     }
 }
