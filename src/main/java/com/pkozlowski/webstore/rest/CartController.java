@@ -2,6 +2,7 @@ package com.pkozlowski.webstore.rest;
 
 import com.pkozlowski.webstore.model.Cart;
 import com.pkozlowski.webstore.model.dto.CartItemDto;
+import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.service.CartService;
 import org.springframework.web.bind.annotation.*;
 
@@ -34,6 +35,11 @@ public class CartController {
     public String updateItem( @RequestBody CartItemDto cartItemDto) {
         cartService.updateItem(cartItemDto.getItemId(), cartItemDto.getQuantity());
         return "item updated";
+    }
+
+    @GetMapping("/checkout")
+    public Checkout checkout() {
+       return cartService.checkout();
     }
 
 
