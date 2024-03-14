@@ -1,10 +1,8 @@
 package com.pkozlowski.webstore.service.impl;
 
 import com.pkozlowski.webstore.exception.ItemException;
-import com.pkozlowski.webstore.model.Cart;
-import com.pkozlowski.webstore.model.CartItem;
-import com.pkozlowski.webstore.model.Item;
-import com.pkozlowski.webstore.model.ItemOperation;
+import com.pkozlowski.webstore.model.*;
+import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.repository.ItemRepository;
 import com.pkozlowski.webstore.service.CartService;
 import jakarta.servlet.http.HttpSession;
@@ -60,9 +58,9 @@ public class CartServiceImpl implements CartService {
         }
         int ordinal = 1;
         BigDecimal total = BigDecimal.ZERO;
-        for (CartItem item : cart.getCartItems()) {
-            item.setOrdinal(ordinal++);
-            total = total.add(item.getPrice());
+        for (CartItem cartItem : cart.getCartItems()) {
+            cartItem.setOrdinal(ordinal++);
+            total = total.add(cartItem.getPrice());
         }
         cart.setSubtotal(total);
         return cart;
@@ -93,6 +91,28 @@ public class CartServiceImpl implements CartService {
             item.setAvailable(item.getAvailable() - quantityToSet);
         }
         itemRepository.save(item);
+    }
+
+    @Override
+    public Checkout checkout() {
+        Cart cart = getCartFromSession();
+        Checkout checkout = new Checkout();
+        BigDecimal total = BigDecimal.ZERO;
+        for (CartItem cartItem : cart.getCartItems()) {
+            Item item = itemRepository.getReferenceById(cartItem.getId());
+            CheckedItem checkedItem = new CheckedItem(cartItem.getTitle());
+            if(cartItem.getQuantity() > item.getAvailable()) {
+                checkedItem.setStatus(CheckedItem.Status.NOT_AVAILABLE);
+            }
+            checkedItem.setQuantity(cartItem.getQuantity());
+            checkedItem.setTotalPrice(cartItem.getPrice());
+            checkout.addCheckedItem(checkedItem);
+            if(checkedItem.getStatus() == CheckedItem.Status.AVAILABLE) {
+                total = total.add(checkedItem.getTotalPrice());
+            }
+        }
+        checkout.setTotal(total);
+        return checkout;
     }
 
     private static CartItem buildCartItem(int quantity, Item item) {
