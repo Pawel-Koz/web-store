@@ -1,6 +1,7 @@
 package com.pkozlowski.webstore.service.impl;
 
 import com.pkozlowski.webstore.exception.ItemException;
+import com.pkozlowski.webstore.mapper.ItemMapper;
 import com.pkozlowski.webstore.model.*;
 import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.repository.ItemRepository;
@@ -15,10 +16,12 @@ public class CartServiceImpl implements CartService {
 
     private final ItemRepository itemRepository;
     private final HttpSession session;
+    private final ItemMapper itemMapper;
 
-    public CartServiceImpl(ItemRepository itemRepository, HttpSession httpSession) {
+    public CartServiceImpl(ItemRepository itemRepository, HttpSession httpSession, ItemMapper itemMapper) {
         this.itemRepository = itemRepository;
         this.session = httpSession;
+        this.itemMapper = itemMapper;
     }
 
     @Override
@@ -46,8 +49,6 @@ public class CartServiceImpl implements CartService {
                             CartItem cartItem = buildCartItem(quantity, item);
                             finalCart.addCartItem(cartItem);
                         });
-        item.setAvailable(item.getAvailable() - quantity);
-        itemRepository.save(item);
     }
 
     @Override
@@ -70,27 +71,18 @@ public class CartServiceImpl implements CartService {
     public void removeCartItem(long id) {
         Cart cart = getCartFromSession();
         CartItem itemToDelete = getCartItemFromCart(id, cart);
-        removeItemFromCartUpdateDb(id, cart, itemToDelete);
+        removeItemFromCartUpdateDb(cart, itemToDelete);
     }
 
     @Override
-    public void updateItem(long id, int quantity) {
+    public void updateCartItem(long id, int quantity) {
         Cart cart = getCartFromSession();
         CartItem cartItem = getCartItemFromCart(id, cart);
-
-        Item item = itemRepository.getReferenceById(id);
-        int actualItemsQuantity = cartItem.getQuantity();
-        int quantityToSet;
         if (quantity == 0) {
-            removeItemFromCartUpdateDb(id, cart, cartItem);
-        } else if (quantity < actualItemsQuantity) {
-            quantityToSet = updateCartItem(quantity, cartItem, ItemOperation.DECREASE);
-            item.setAvailable(item.getAvailable() + quantityToSet);
-        } else if (quantity > actualItemsQuantity) {
-            quantityToSet = updateCartItem(quantity, cartItem, ItemOperation.INCREASE);
-            item.setAvailable(item.getAvailable() - quantityToSet);
+            removeItemFromCartUpdateDb(cart, cartItem);
+        } else {
+            updateCartItem(quantity, cartItem, ItemOperation.UPDATE);
         }
-        itemRepository.save(item);
     }
 
     @Override
@@ -100,16 +92,15 @@ public class CartServiceImpl implements CartService {
         BigDecimal total = BigDecimal.ZERO;
         for (CartItem cartItem : cart.getCartItems()) {
             Item item = itemRepository.getReferenceById(cartItem.getId());
-            CheckedItem checkedItem = new CheckedItem(cartItem.getTitle());
-            if(cartItem.getQuantity() > item.getAvailable()) {
+            CheckedItem checkedItem = itemMapper.toCheckedItem(cartItem);
+            if (cartItem.getQuantity() > item.getAvailable()) {
                 checkedItem.setStatus(CheckedItem.Status.NOT_AVAILABLE);
+            } else {
+                total = total.add(cartItem.getPrice());
+                item.setAvailable(item.getAvailable() - cartItem.getQuantity());
+                itemRepository.save(item);
             }
-            checkedItem.setQuantity(cartItem.getQuantity());
-            checkedItem.setTotalPrice(cartItem.getPrice());
             checkout.addCheckedItem(checkedItem);
-            if(checkedItem.getStatus() == CheckedItem.Status.AVAILABLE) {
-                total = total.add(checkedItem.getTotalPrice());
-            }
         }
         checkout.setTotal(total);
         return checkout;
@@ -125,11 +116,8 @@ public class CartServiceImpl implements CartService {
                 .build();
     }
 
-    private void removeItemFromCartUpdateDb(long id, Cart cart, CartItem itemToDelete) {
+    private void removeItemFromCartUpdateDb(Cart cart, CartItem itemToDelete) {
         cart.getCartItems().remove(itemToDelete);
-        Item item = itemRepository.getReferenceById(id);
-        item.setAvailable(item.getAvailable() + itemToDelete.getQuantity());
-        itemRepository.save(item);
     }
 
     private Cart getCartFromSession() {
@@ -145,26 +133,18 @@ public class CartServiceImpl implements CartService {
                 .orElseThrow(() -> new ItemException(String.format("Item with id: %d doesn't exist in cart", id)));
     }
 
-    private static int updateCartItem(int quantity, CartItem cartItem, ItemOperation operation) {
-        int setQuantity;
+    private static void updateCartItem(int quantity, CartItem cartItem, ItemOperation operation) {
         switch (operation) {
             case ADD -> {
-                setQuantity = cartItem.getQuantity() + quantity;
+                int setQuantity = cartItem.getQuantity() + quantity;
                 cartItem.setQuantity(setQuantity);
                 cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(setQuantity)));
             }
-            case INCREASE -> {
-                setQuantity = quantity - cartItem.getQuantity();
-                cartItem.setQuantity(quantity);
-                cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
-            }
-            case DECREASE -> {
-                setQuantity = cartItem.getQuantity() - quantity;
+            case UPDATE -> {
                 cartItem.setQuantity(quantity);
                 cartItem.setPrice(cartItem.getPricePerUnit().multiply(new BigDecimal(quantity)));
             }
             default -> throw new RuntimeException(String.format("Unknown operation %s", operation));
         }
-        return setQuantity;
     }
 }

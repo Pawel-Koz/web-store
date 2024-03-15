@@ -10,7 +10,7 @@ public interface CartService {
 
     void removeCartItem(long id);
 
-    void updateItem(long id, int quantity);
+    void updateCartItem(long id, int quantity);
 
     Checkout checkout();
 }

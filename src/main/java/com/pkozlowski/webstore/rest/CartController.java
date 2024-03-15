@@ -33,7 +33,7 @@ public class CartController {
 
     @PutMapping("/update")
     public String updateItem( @RequestBody CartItemDto cartItemDto) {
-        cartService.updateItem(cartItemDto.getItemId(), cartItemDto.getQuantity());
+        cartService.updateCartItem(cartItemDto.getItemId(), cartItemDto.getQuantity());
         return "item updated";
     }
 

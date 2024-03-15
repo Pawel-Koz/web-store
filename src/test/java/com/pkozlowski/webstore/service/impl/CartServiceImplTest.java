@@ -130,7 +130,7 @@ class CartServiceImplTest {
         cart.addCartItem(cartItem);
         when(session.getAttribute(anyString())).thenReturn(cart);
         when(itemRepository.getReferenceById(anyLong())).thenReturn(item);
-        cartService.updateItem(1L, 0);
+        cartService.updateCartItem(1L, 0);
         verify(itemRepository, times(2)).save(item);
     }
 
@@ -141,7 +141,7 @@ class CartServiceImplTest {
         cart.addCartItem(cartItem);
         when(session.getAttribute(anyString())).thenReturn(cart);
         when(itemRepository.getReferenceById(anyLong())).thenReturn(item);
-        cartService.updateItem(1L, 11);
+        cartService.updateCartItem(1L, 11);
         verify(itemRepository, times(1)).save(item);
     }
 
@@ -152,7 +152,7 @@ class CartServiceImplTest {
         cart.addCartItem(cartItem);
         when(session.getAttribute(anyString())).thenReturn(cart);
         when(itemRepository.getReferenceById(anyLong())).thenReturn(item);
-        cartService.updateItem(1L, 9);
+        cartService.updateCartItem(1L, 9);
         verify(itemRepository, times(1)).save(item);
     }
 
