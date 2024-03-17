@@ -2,6 +2,7 @@ package com.pkozlowski.webstore.rest;
 
 import com.pkozlowski.webstore.model.Item;
 import com.pkozlowski.webstore.service.ItemService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,9 +19,7 @@ public class ItemController {
     }
 
     @GetMapping
-    public List<Item> findAll() {
-        return itemService.findAll();
+    public ResponseEntity<List<Item>> findAll() {
+        return ResponseEntity.ok(itemService.findAll());
     }
-
-
 }

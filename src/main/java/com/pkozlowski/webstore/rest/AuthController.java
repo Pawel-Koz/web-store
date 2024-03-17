@@ -2,7 +2,7 @@ package com.pkozlowski.webstore.rest;
 
 import com.pkozlowski.webstore.model.dto.LoginDto;
 import jakarta.servlet.http.HttpSession;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -30,6 +30,8 @@ public class AuthController {
         ));
         session.invalidate();
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        return new ResponseEntity<>(session.getId(), HttpStatus.OK);
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("SessionId", session.getId());
+        return ResponseEntity.ok().headers(headers).body(session.getId());
     }
 }

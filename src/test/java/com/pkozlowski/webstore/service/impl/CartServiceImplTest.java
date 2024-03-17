@@ -1,9 +1,12 @@
 package com.pkozlowski.webstore.service.impl;
 
 import com.pkozlowski.webstore.exception.ItemException;
+import com.pkozlowski.webstore.mapper.ItemMapper;
 import com.pkozlowski.webstore.model.Cart;
 import com.pkozlowski.webstore.model.CartItem;
+import com.pkozlowski.webstore.model.CheckedItem;
 import com.pkozlowski.webstore.model.Item;
+import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.repository.ItemRepository;
 import jakarta.servlet.http.HttpSession;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,6 +31,8 @@ class CartServiceImplTest {
     private ItemRepository itemRepository;
     @Mock
     private HttpSession session;
+    @Mock
+    private ItemMapper itemMapper;
     @InjectMocks
     private CartServiceImpl cartService;
 
@@ -155,5 +160,30 @@ class CartServiceImplTest {
         cartService.updateCartItem(1L, 9);
         verify(itemRepository, times(1)).save(item);
     }
+
+    @Test
+    public void testCheckout() {
+        Cart cart = new Cart();
+        CartItem cartItem1 = new CartItem(1, 1L, "Product 1", new BigDecimal("10.00"), new BigDecimal(1000), 10);
+        CartItem cartItem2 = new CartItem(2, 2L, "Product 2", new BigDecimal("20.00"), new BigDecimal(2000), 10);
+        cart.addCartItem(cartItem1);
+        cart.addCartItem(cartItem2);
+
+        when(session.getAttribute(anyString())).thenReturn(cart);
+        when(itemRepository.getReferenceById(1L)).thenReturn(item);
+        when(itemRepository.getReferenceById(2L)).thenReturn(new Item( "Product 2", 5, BigDecimal.valueOf(15)));
+        when(itemMapper.toCheckedItem(any())).thenAnswer(invocation -> {
+            CartItem cartItem = invocation.getArgument(0);
+            return new CheckedItem(cartItem.getTitle());
+        });
+        Checkout checkout = cartService.checkout();
+
+        assertEquals(cartItem1.getPrice(), checkout.getTotal());
+        assertEquals(2, checkout.getCheckedItems().size());
+        assertEquals(CheckedItem.Status.AVAILABLE, checkout.getCheckedItems().get(0).getStatus());
+        assertEquals(CheckedItem.Status.NOT_AVAILABLE, checkout.getCheckedItems().get(1).getStatus());
+        verify(itemRepository, times(1)).save(any());
+    }
+
 
 }

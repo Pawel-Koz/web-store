@@ -4,10 +4,11 @@ import com.pkozlowski.webstore.model.Cart;
 import com.pkozlowski.webstore.model.dto.CartItemDto;
 import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.service.CartService;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("api/cart")
+@RequestMapping("api/cart/items")
 public class CartController {
     private final CartService cartService;
 
@@ -15,32 +16,31 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    @PostMapping("/add")
-    public String addToCart(@RequestBody CartItemDto request) {
+    @PostMapping
+    public ResponseEntity<String> addToCart(@RequestBody CartItemDto request) {
         cartService.addItemToCart(request.getItemId(), request.getQuantity());
-        return String.format("Added to cart: itemId: %d, quantity: %d", request.getItemId(), request.getQuantity());
+        return ResponseEntity.ok("Item added to cart");
     }
 
-    @GetMapping("/")
-    public Cart showCart() {
-        return cartService.getCart();
+    @GetMapping
+    public ResponseEntity<Cart> showCart() {
+        return ResponseEntity.ok(cartService.getCart());
     }
 
     @DeleteMapping("/{id}")
-    public void removeCartItem(@PathVariable long id) {
+    public ResponseEntity<String> removeCartItem(@PathVariable long id) {
         cartService.removeCartItem(id);
+        return ResponseEntity.ok("Item removed from cart");
     }
 
-    @PutMapping("/update")
-    public String updateItem( @RequestBody CartItemDto cartItemDto) {
+    @PutMapping
+    public ResponseEntity<String> updateItem(@RequestBody CartItemDto cartItemDto) {
         cartService.updateCartItem(cartItemDto.getItemId(), cartItemDto.getQuantity());
-        return "item updated";
+        return ResponseEntity.ok("item updated");
     }
 
     @GetMapping("/checkout")
-    public Checkout checkout() {
-       return cartService.checkout();
+    public ResponseEntity<Checkout> checkout() {
+        return ResponseEntity.ok(cartService.checkout());
     }
-
-
 }
