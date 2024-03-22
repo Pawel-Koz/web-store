@@ -1,25 +1,39 @@
 package com.pkozlowski.webstore.service.impl;
 
 import com.pkozlowski.webstore.exception.ItemException;
+import com.pkozlowski.webstore.exception.UserException;
 import com.pkozlowski.webstore.mapper.ItemMapper;
 import com.pkozlowski.webstore.model.*;
 import com.pkozlowski.webstore.model.dto.Checkout;
 import com.pkozlowski.webstore.repository.ItemRepository;
+import com.pkozlowski.webstore.repository.OrderRepository;
+import com.pkozlowski.webstore.repository.UserRepository;
 import com.pkozlowski.webstore.service.CartService;
 import jakarta.servlet.http.HttpSession;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Service
 public class CartServiceImpl implements CartService {
 
     private final ItemRepository itemRepository;
+    private final OrderRepository orderRepository;
+    private final UserRepository userRepository;
     private final HttpSession session;
     private final ItemMapper itemMapper;
 
-    public CartServiceImpl(ItemRepository itemRepository, HttpSession httpSession, ItemMapper itemMapper) {
+    public CartServiceImpl(ItemRepository itemRepository, OrderRepository orderRepository,
+                           UserRepository userRepository,
+                           HttpSession httpSession, ItemMapper itemMapper) {
         this.itemRepository = itemRepository;
+        this.orderRepository = orderRepository;
+        this.userRepository = userRepository;
         this.session = httpSession;
         this.itemMapper = itemMapper;
     }
@@ -103,7 +117,23 @@ public class CartServiceImpl implements CartService {
             checkout.addCheckedItem(checkedItem);
         }
         checkout.setTotal(total);
+        UserDetails userDetails = (UserDetails) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userRepository.findByEmail(userDetails.getUsername()).orElseThrow(
+                () -> new UserException(String.format("User with email: %s does not exist", userDetails.getUsername()))
+        );
+        saveOrder(total, user, orderRepository);
         return checkout;
+    }
+
+    private void saveOrder(BigDecimal total, User user, OrderRepository repository) {
+        Order order = Order.builder()
+                .timestamp(Date.valueOf(LocalDate.now()))
+                .total(total)
+                .status(OrderStatus.ORDERED)
+                .user(user)
+                .build();
+        repository.save(order);
+
     }
 
     private static CartItem buildCartItem(int quantity, Item item) {

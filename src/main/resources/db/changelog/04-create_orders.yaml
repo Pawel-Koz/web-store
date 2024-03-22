@@ -1,0 +1,40 @@
+databaseChangeLog:
+  - changeSet:
+      id: 4-create-orders
+      author: Pawel
+      changes:
+        - createTable:
+            tableName: orders
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    nullable: false
+                    primaryKey: true
+                    primaryKeyName: order_pk
+              - column:
+                  name: time_stamp
+                  type: date
+                  constraints:
+                    nullable: false
+              - column:
+                  name: total
+                  type: double precision(10,2)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: varchar(30)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_orders_user_id
+                    references: users(id)
+
+
